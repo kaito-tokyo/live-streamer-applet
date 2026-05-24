@@ -17,7 +17,7 @@ struct YouTubeAppletApp: App {
     @State private var settingsStore = SettingsStore()
 
     var body: some Scene {
-        WindowGroup("YouTubeApplet") {
+        WindowGroup("Live Streamer Applet YT") {
             ContentView(settingsStore: settingsStore)
         }
         .defaultSize(width: 960, height: 540)
