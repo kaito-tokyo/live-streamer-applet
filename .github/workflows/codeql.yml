@@ -22,10 +22,10 @@ jobs:
         include:
           - language: actions
             build-mode: none
-            runs-on: ubuntu-latest
+            runs-on: ubuntu-24.04
           - language: swift
             build-mode: autobuild
-            runs-on: macos-latest
+            runs-on: macos-26
 
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ matrix.runs-on }}
@@ -43,6 +43,8 @@ jobs:
       - name: Generate project
         if: matrix.language == 'swift'
         shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        env:
+          ONLY_ACTIVE_ARCH: YES
         run: |
           brew install xcodegen
           xcodegen generate
