@@ -24,7 +24,7 @@ jobs:
             build-mode: none
             runs-on: ubuntu-24.04
           - language: swift
-            build-mode: autobuild
+            build-mode: manual
             runs-on: macos-26
 
     name: Analyze (${{ matrix.language }})
@@ -40,11 +40,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Generate project
+      - name: Generate project using XcodeGen
         if: matrix.language == 'swift'
         shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
-        env:
-          ONLY_ACTIVE_ARCH: YES
         run: |
           brew install xcodegen
           xcodegen generate
@@ -54,6 +52,21 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Xcode project
+        if: matrix.language == 'swift'
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: |
+          xcodebuild build \
+            -project LiveStreamerApplet.xcodeproj \
+            -target LiveStreamerAppletYT \
+            -sdk macosx \
+            -arch arm64 \
+            -configuration Debug \
+            ONLY_ACTIVE_ARCH=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
