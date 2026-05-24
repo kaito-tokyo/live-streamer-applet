@@ -101,6 +101,8 @@ jobs:
               CODE_SIGN_STYLE=Manual
             )
             xcodebuild archive "${XCODEBUILD_ARCHIVE_ARGS[@]}"
+
+            cp -a "build/$target.xcarchive/Products/Applications/$target.app" "build/$target.app"
           done
 
       - name: Upload apps
@@ -108,7 +110,6 @@ jobs:
         with:
           name: live-streamer-applet-apps-${{ github.run_id }}
           path: |
-            build/*.xcarchive/Products/Applications/*.app
+            build/*.app
           if-no-files-found: warn
           retention-days: 7
-
