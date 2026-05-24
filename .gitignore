@@ -4,4 +4,4 @@
 
 *.xcodeproj/
 .DS_Store
-/build/
+/build_*/

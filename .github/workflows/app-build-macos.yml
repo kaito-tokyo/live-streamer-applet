@@ -57,6 +57,7 @@ jobs:
       contents: read
 
     env:
+      CODESIGN_ENABLED: '${{ inputs.codesign-enabled }}'
       DEVELOPER_DIR: '${{ inputs.DEVELOPER_DIR }}'
 
     steps:
@@ -90,26 +91,61 @@ jobs:
           CODESIGN_TEAM: ${{ steps.codesign.outputs.CODESIGN_TEAM }}
           MACOS_SIGNING_APPLICATION_IDENTITY: ${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}
         run: |
+          mkdir -p build_macos
+
           for target in LiveStreamerAppletYT; do
             XCODEBUILD_ARCHIVE_ARGS=(
               -project LiveStreamerApplet.xcodeproj
               -scheme "$target"
               -configuration Release
-              -archivePath "build/$target.xcarchive"
-              DEVELOPMENT_TEAM="$CODESIGN_TEAM"
-              CODE_SIGN_IDENTITY="$MACOS_SIGNING_APPLICATION_IDENTITY" \
-              CODE_SIGN_STYLE=Manual
+              -archivePath "build_macos/$target.xcarchive"
             )
-            xcodebuild archive "${XCODEBUILD_ARCHIVE_ARGS[@]}"
 
-            cp -a "build/$target.xcarchive/Products/Applications/$target.app" ./
+            if [[ "$CODESIGN_ENABLED" == true ]]; then
+              XCODEBUILD_ARCHIVE_ARGS+=(
+                DEVELOPMENT_TEAM="$CODESIGN_TEAM"
+                CODE_SIGN_IDENTITY="$MACOS_SIGNING_APPLICATION_IDENTITY" \
+                CODE_SIGN_STYLE=Manual
+              )
+            fi
+
+            xcodebuild archive "${XCODEBUILD_ARCHIVE_ARGS[@]}"
           done
 
-      - name: Upload apps
+      - name: Create dmg
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: |
+          mkdir -p build_dmg
+          cp -a build_macos/*.xcarchive/Products/Applications/*.app build_dmg/
+          diskutil image create from --format ULMO --volumeName "LiveStreamerApplet" build_dmg LiveStreamerApplet.dmg
+
+      - name: Notarize dmg
+        if: inputs.codesign-enabled
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        env:
+          APP_STORE_CONNECT_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: |
+          KEY_FILE="$(mktemp -t APP_STORE_CONNECT_KEY)"
+
+          printenv APP_STORE_CONNECT_KEY >"$KEY_FILE"
+
+          for dmg in *.dmg; do
+            xcrun notarytool submit "$dmg" \
+              --issuer "$APP_STORE_CONNECT_ISSUER" \
+              --key "$KEY_FILE" \
+              --key-id "$APP_STORE_CONNECT_KEY_ID" \
+              --wait
+
+            xcrun stapler staple "$dmg"
+          done
+
+      - name: Upload apps dmg
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: live-streamer-applet-apps-${{ github.run_id }}
+          name: live-streamer-applet-dmg-${{ github.run_id }}
           path: |
-            *.app
+            *.dmg
           if-no-files-found: warn
           retention-days: 7
