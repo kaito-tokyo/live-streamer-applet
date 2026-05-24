@@ -14,7 +14,7 @@ settings:
     SWIFT_VERSION: '6.3'
 
 targets:
-  StreamerAppletYT:
+  LiveStreamerAppletYT:
     type: application
     platform: macOS
     sources:
@@ -28,5 +28,5 @@ targets:
         CURRENT_PROJECT_VERSION: '1'
         ENABLE_HARDENED_RUNTIME: YES
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: YouTubeApplet
+        INFOPLIST_KEY_CFBundleDisplayName: Live Streamer Applet YT
         MARKETING_VERSION: '0.1.0'
