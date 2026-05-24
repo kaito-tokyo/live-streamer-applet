@@ -1,4 +1,8 @@
-name: StreamerApplet
+# SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: LiveStreamerApplet
 
 options:
   bundleIdPrefix: tokyo.kaito.live-streamer-applet
@@ -24,7 +28,6 @@ targets:
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: '1'
         ENABLE_HARDENED_RUNTIME: YES
         GENERATE_INFOPLIST_FILE: YES

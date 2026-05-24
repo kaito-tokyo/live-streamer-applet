@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+# SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Check CI
+
+# file: .github/workflows/check.yml
+# author: Kaito Udagawa <umireon@kaito.tokyo>
+# date: 2026-05-24
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+  push:
+    branches: [main]
+    tags: ["*"]
+
+permissions: {}
+
+env:
+  HOMEBREW_NO_ANALYTICS: "1"
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_ENV_HINTS: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
+jobs:
+  check-swift-format:
+    name: Check clang-format
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install swift-format with Linuxbrew
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install swift-format
+          echo "$(brew --prefix swift-format)/bin" >> "$GITHUB_PATH"
+
+      - name: Check with clang-format
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: |
+          swift-format lint --recursive .
+
+  check-reuse:
+    name: Check reuse
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install reuse with Linuxbrew
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install reuse
+          echo "$(brew --prefix reuse)/bin" >> "$GITHUB_PATH"
+
+      - name: Lint with reuse
+        shell: bash --noprofile --norc -euo pipefail -O nullglob {0}
+        run: reuse lint
