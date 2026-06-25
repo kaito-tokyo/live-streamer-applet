@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //
-// Sources/StreamerAppletYT/StreamerAppletYTApp.swift
-// StreamerAppletYT
+// Sources/StreamerApplet/StreamerAppletApp.swift
+// StreamerApplet
 //
 // Version: 0.1.0
 // Date: 2026-05-24
@@ -13,11 +13,11 @@
 import SwiftUI
 
 @main
-struct LiveStreamerAppletYTApp: App {
+struct LiveStreamerAppletApp: App {
     @State private var settingsStore = SettingsStore()
 
     var body: some Scene {
-        WindowGroup("Live Streamer Applet YT") {
+        WindowGroup("Live Streamer Applet") {
             ContentView(settingsStore: settingsStore)
         }
         .defaultSize(width: 960, height: 540)
