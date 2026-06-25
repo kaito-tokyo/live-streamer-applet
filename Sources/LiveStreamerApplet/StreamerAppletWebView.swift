@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //
-// Sources/StreamerAppletYT/StreamerAppletYTWebView.swift
-// StreamerAppletYT
+// Sources/StreamerApplet/StreamerAppletWebView.swift
+// StreamerApplet
 //
 // Version: 0.1.0
 // Date: 2026-05-24
@@ -13,7 +13,7 @@
 import SwiftUI
 import WebKit
 
-struct StreamerAppletYTWebView: NSViewRepresentable {
+struct StreamerAppletWebView: NSViewRepresentable {
     let url: URL?
 
     func makeCoordinator() -> Coordinator {
@@ -39,6 +39,14 @@ struct StreamerAppletYTWebView: NSViewRepresentable {
         if let url {
             webView.load(URLRequest(url: url))
         }
+    }
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.stopLoading()
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.loadHTMLString("", baseURL: nil)
+        coordinator.loadedURL = nil
     }
 
     final class Coordinator {
