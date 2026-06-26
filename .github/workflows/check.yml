@@ -28,7 +28,7 @@ env:
 
 jobs:
   check-swift-format:
-    name: Check clang-format
+    name: Check swift-format
 
     runs-on: ubuntu-24.04
     timeout-minutes: 10

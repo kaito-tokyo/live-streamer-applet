@@ -15,14 +15,15 @@ import Foundation
 struct SettingsStore {
     static let configurationTextStorageKey = "configurationText"
     static let defaultConfigurationText = """
-    start.name = Start Page
-    start.type = web
-    start.url = https://kaito-tokyo.github.io/live-streamer-applet/start.html
+        [default]
+        start.name = Start Page
+        start.type = web
+        start.url = https://kaito-tokyo.github.io/live-streamer-applet/start.html
 
-    shell.name = Shell
-    shell.type = terminal
-    shell.command = ["/bin/echo", "Console", "ready"]
-    """
+        shell.name = Shell
+        shell.type = terminal
+        shell.command = ["/bin/echo", "Console", "ready"]
+        """
 
     var configurationText: String
 
