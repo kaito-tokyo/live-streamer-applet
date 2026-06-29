@@ -4,7 +4,7 @@
 
 CONFIGURATION ?= Release
 
-TARGET_XCARCHIVES := build/LiveStreamerAppletYT.xcarchive
+TARGET_XCARCHIVES := build/LiveStreamerApplet.xcarchive
 
 .PHONY: all
 all: $(TARGET_XCARCHIVES)

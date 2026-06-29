@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+# SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: App CI
+
+# file: .github/workflows/app.yml
+# author: Kaito Udagawa <umireon@kaito.tokyo>
+# date: 2026-06-29
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+  push:
+    branches: [main]
+    tags: ['*']
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-build-macos:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/app-build-macos.yml
+
+  accept-app:
+    if: always()
+    needs:
+      - app-build-macos
+    runs-on: ubuntu-slim
+    permissions: {}
+    steps:
+      - name: Check job results
+        run: |
+          [[ "${{ needs.app-build-macos.result }}" == 'success' ]]
