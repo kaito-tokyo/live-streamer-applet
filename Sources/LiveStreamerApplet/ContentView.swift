@@ -10,10 +10,111 @@
 // Date: 2026-05-24
 //
 
-import Foundation
 import AppKit
-import SwiftUI
 import Darwin
+import Foundation
+import SwiftUI
+
+private struct PresetConfiguration {
+    let presets: [AppletPreset]
+
+    static func parse(_ configurationText: String) throws -> PresetConfiguration {
+        var presets: [AppletPreset] = []
+        var presetIDs = Set<String>()
+        var currentPresetID: String?
+        var currentPresetLines: [String] = []
+        var foundSection = false
+
+        func finishCurrentPreset() throws {
+            guard let currentPresetID else {
+                return
+            }
+
+            let configurationText = currentPresetLines.joined(separator: "\n")
+            guard !configurationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PresetValidationError.emptyPreset(currentPresetID)
+            }
+
+            presets.append(AppletPreset(id: currentPresetID, configurationText: configurationText))
+        }
+
+        for (lineIndex, rawLine) in configurationText.split(
+            separator: "\n", omittingEmptySubsequences: false
+        ).enumerated() {
+            let rawLineString = String(rawLine)
+            let line = rawLineString.trimmingCharacters(in: .whitespaces)
+
+            if line.hasPrefix("[") {
+                guard line.hasSuffix("]") else {
+                    throw PresetValidationError.invalidSection(lineIndex + 1)
+                }
+
+                try finishCurrentPreset()
+                currentPresetID = nil
+                currentPresetLines = []
+                foundSection = true
+
+                if line.hasPrefix("[[") && line.hasSuffix("]]") {
+                    continue
+                }
+
+                let sectionID = String(line.dropFirst().dropLast()).trimmingCharacters(
+                    in: .whitespaces)
+                guard !sectionID.isEmpty, !sectionID.contains("[") && !sectionID.contains("]")
+                else {
+                    throw PresetValidationError.invalidSection(lineIndex + 1)
+                }
+                guard !presetIDs.contains(sectionID) else {
+                    throw PresetValidationError.duplicatePreset(sectionID)
+                }
+
+                presetIDs.insert(sectionID)
+                currentPresetID = sectionID
+                continue
+            }
+
+            if foundSection {
+                currentPresetLines.append(rawLineString)
+            }
+        }
+
+        try finishCurrentPreset()
+
+        if !foundSection {
+            let trimmedConfigurationText = configurationText.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            guard !trimmedConfigurationText.isEmpty else {
+                throw PresetValidationError.emptyPresets
+            }
+            return PresetConfiguration(presets: [
+                AppletPreset(id: "default", configurationText: configurationText)
+            ])
+        }
+
+        guard !presets.isEmpty else {
+            throw PresetValidationError.emptyPresets
+        }
+
+        return PresetConfiguration(presets: presets)
+    }
+}
+
+private struct AppletPreset: Identifiable {
+    let id: String
+    let configurationText: String
+
+    var displayName: String {
+        id
+            .split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == "." })
+            .map { word in
+                guard let firstCharacter = word.first else {
+                    return ""
+                }
+                return firstCharacter.uppercased() + word.dropFirst()
+            }
+            .joined(separator: " ")
+    }
+}
 
 private struct AppletConfiguration {
     let applets: [AppletSpec]
@@ -23,7 +124,9 @@ private struct AppletConfiguration {
         var orderedIDs: [String] = []
         var orderedIDSet: Set<String> = []
 
-        for (lineIndex, rawLine) in configurationText.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+        for (lineIndex, rawLine) in configurationText.split(
+            separator: "\n", omittingEmptySubsequences: false
+        ).enumerated() {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
 
             guard !line.isEmpty, !line.hasPrefix("#"), !line.hasPrefix(";") else {
@@ -35,7 +138,8 @@ private struct AppletConfiguration {
             }
 
             let left = line[..<separatorIndex].trimmingCharacters(in: .whitespaces)
-            let value = line[line.index(after: separatorIndex)...].trimmingCharacters(in: .whitespaces)
+            let value = line[line.index(after: separatorIndex)...].trimmingCharacters(
+                in: .whitespaces)
             let keyPath = left.split(separator: ".", omittingEmptySubsequences: false)
 
             guard keyPath.count == 2, !keyPath[0].isEmpty, !keyPath[1].isEmpty else {
@@ -79,9 +183,11 @@ private struct AppletConfiguration {
                     throw ValidationError.missingWebURL(id)
                 }
 
-                return AppletSpec(id: id, name: name, type: type, url: url, command: [], currentDirectory: nil)
+                return AppletSpec(
+                    id: id, name: name, type: type, url: url, command: [], currentDirectory: nil)
             case .terminal:
-                let command = try parseCommand(fields["command"] ?? "[\"/usr/bin/true\"]", appletID: id)
+                let command = try parseCommand(
+                    fields["command"] ?? "[\"/usr/bin/true\"]", appletID: id)
                 return AppletSpec(
                     id: id,
                     name: name,
@@ -125,20 +231,40 @@ private enum ValidationError: LocalizedError {
         switch self {
         case .emptyApplets:
             "Configuration must contain at least one applet name."
-        case let .invalidLine(lineNumber):
+        case .invalidLine(let lineNumber):
             "Line \(lineNumber) must use key = value syntax."
-        case let .invalidKey(key, lineNumber):
+        case .invalidKey(let key, let lineNumber):
             "Line \(lineNumber) has invalid key '\(key)'. Use id.key = value."
-        case let .missingName(id):
+        case .missingName(let id):
             "Applet '\(id)' must contain a name."
-        case let .missingType(id):
+        case .missingType(let id):
             "Applet '\(id)' must contain a type."
-        case let .missingWebURL(id):
+        case .missingWebURL(let id):
             "Web applet '\(id)' must contain a valid url."
-        case let .unknownType(type, id):
+        case .unknownType(let type, let id):
             "Applet '\(id)' has unknown type '\(type)'."
-        case let .invalidCommand(id):
+        case .invalidCommand(let id):
             "Applet '\(id)' command must be a non-empty string array, for example [\"/bin/echo\", \"hello\"]."
+        }
+    }
+}
+
+private enum PresetValidationError: LocalizedError {
+    case emptyPresets
+    case emptyPreset(String)
+    case duplicatePreset(String)
+    case invalidSection(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyPresets:
+            "Configuration must contain at least one preset section."
+        case .emptyPreset(let id):
+            "Preset '\(id)' must contain at least one applet."
+        case .duplicatePreset(let id):
+            "Preset '\(id)' is defined more than once."
+        case .invalidSection(let lineNumber):
+            "Line \(lineNumber) has an invalid section header."
         }
     }
 }
@@ -162,12 +288,91 @@ private func parseCommand(_ text: String, appletID: String) throws -> [String] {
 
 struct ContentView: View {
     let settingsStore: SettingsStore
+    @State private var selectedPresetID: String?
 
     var body: some View {
-        switch Result(catching: { try AppletConfiguration.parse(settingsStore.configurationText) }) {
-        case let .success(configuration):
+        switch Result(catching: { try PresetConfiguration.parse(settingsStore.configurationText) })
+        {
+        case .success(let presetConfiguration):
+            PresetContentView(
+                presetConfiguration: presetConfiguration,
+                selectedPresetID: $selectedPresetID
+            )
+        case .failure(let error):
+            ConfigurationErrorView(error: error)
+        }
+    }
+}
+
+private struct PresetContentView: View {
+    let presetConfiguration: PresetConfiguration
+    @Binding var selectedPresetID: String?
+
+    var body: some View {
+        if presetConfiguration.presets.count == 1, let preset = presetConfiguration.presets.first {
+            AppletPresetView(preset: preset)
+        } else if let selectedPreset {
+            AppletPresetView(preset: selectedPreset)
+        } else {
+            PresetSelectionView(presets: presetConfiguration.presets) { preset in
+                selectedPresetID = preset.id
+            }
+        }
+    }
+
+    private var selectedPreset: AppletPreset? {
+        guard let selectedPresetID else {
+            return nil
+        }
+        return presetConfiguration.presets.first { $0.id == selectedPresetID }
+    }
+}
+
+private struct PresetSelectionView: View {
+    let presets: [AppletPreset]
+    let onSelect: (AppletPreset) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Select Preset")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(presets) { preset in
+                    Button {
+                        onSelect(preset)
+                    } label: {
+                        HStack {
+                            Text(preset.displayName)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 10)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            .frame(maxWidth: 360)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+
+private struct AppletPresetView: View {
+    let preset: AppletPreset
+
+    var body: some View {
+        switch Result(catching: { try AppletConfiguration.parse(preset.configurationText) }) {
+        case .success(let configuration):
             AppletStackView(configuration: configuration)
-        case let .failure(error):
+        case .failure(let error):
             ConfigurationErrorView(error: error)
         }
     }
@@ -333,7 +538,8 @@ private final class SimpleConsoleView: NSScrollView {
             self.standardOutputPipe = standardOutputPipe
             self.standardErrorPipe = standardErrorPipe
         } catch {
-            append(text: "Failed to start process: \(error.localizedDescription)\n", color: .systemRed)
+            append(
+                text: "Failed to start process: \(error.localizedDescription)\n", color: .systemRed)
         }
     }
 
@@ -402,7 +608,8 @@ private final class SimpleConsoleView: NSScrollView {
     }
 
     private func applySGR(parameters: String, fallbackColor: NSColor) {
-        let values = parameters.isEmpty ? [0] : parameters.split(separator: ";").compactMap { Int($0) }
+        let values =
+            parameters.isEmpty ? [0] : parameters.split(separator: ";").compactMap { Int($0) }
         for value in values {
             switch value {
             case 0, 39:
@@ -495,7 +702,8 @@ private func directChildPIDs(of parentPID: pid_t) -> [pid_t] {
         return []
     }
 
-    return output
+    return
+        output
         .split(whereSeparator: \.isNewline)
         .compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }
 }
