@@ -81,7 +81,7 @@ jobs:
         run: |
           xcodebuild build \
             -project LiveStreamerApplet.xcodeproj \
-            -target LiveStreamerAppletYT \
+            -target LiveStreamerApplet \
             -sdk macosx \
             -arch arm64 \
             -configuration Debug \
